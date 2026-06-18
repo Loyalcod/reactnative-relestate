@@ -5,6 +5,8 @@ import icons from "@/constants/icons";
 import images from "@/constants/images";
 import { useAuth } from "@/context/auth-context";
 import { getGravatarUrl } from "@/lib/gravatar";
+import { useLocalSearchParams } from "expo-router";
+// import seed from "@/lib/seed";
 import { useEffect, useState } from "react";
 import {
   FlatList,
@@ -18,11 +20,20 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Index() {
 
-const { user } = useAuth()
+const { user, latestProperties,  properties,  getLatestProperties,  getProperties, } = useAuth()
 
 const [avatarSource, setAvatarSource] = useState<ImageSourcePropType>(images.avatar);
 
 useEffect(() => {
+
+  getLatestProperties();
+
+  getProperties({
+    filter: "All",
+    query: "",
+    limit: 10,
+  });
+  
   let cancelled = false;
 
   async function resolveAvatar() {
@@ -52,12 +63,12 @@ useEffect(() => {
   };
 }, [user?.email, user?.prefs]);
 
-
-
+const params = useLocalSearchParams<{query? : string; filter?: string}>()
 
   return (
     <>
       <SafeAreaView className="bg-white h-full">
+        {/* <Button title="Seed" onPress={seed} /> */}
         <FlatList
           data={[1, 2, 3, 4, 5, 6]}
           renderItem={({ item }) => <Card/>}
