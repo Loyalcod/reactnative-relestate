@@ -5,7 +5,7 @@ import icons from "@/constants/icons";
 import images from "@/constants/images";
 import { useAuth } from "@/context/auth-context";
 import { getGravatarUrl } from "@/lib/gravatar";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 // import seed from "@/lib/seed";
 import { useEffect, useState } from "react";
 import {
@@ -25,7 +25,6 @@ const { user, latestProperties,  properties,  getLatestProperties,  getPropertie
 const [avatarSource, setAvatarSource] = useState<ImageSourcePropType>(images.avatar);
 
 useEffect(() => {
-
   getLatestProperties();
 
   getProperties({
@@ -33,6 +32,9 @@ useEffect(() => {
     query: "",
     limit: 10,
   });
+}, []);
+
+useEffect(() => {
   
   let cancelled = false;
 
@@ -65,14 +67,21 @@ useEffect(() => {
 
 const params = useLocalSearchParams<{query? : string; filter?: string}>()
 
+const handleSingleProperty = (id: string)=>  router.push(`/properties/${id}`)
+
+
+
+
+// console.log(JSON.stringify(properties))
+
   return (
     <>
       <SafeAreaView className="bg-white h-full">
         {/* <Button title="Seed" onPress={seed} /> */}
         <FlatList
-          data={[1, 2, 3, 4, 5, 6]}
-          renderItem={({ item }) => <Card/>}
-          keyExtractor={(item)=> item.toString()}
+          data={properties}
+          renderItem={({ item }) => <Card item={item} onPress={()=>handleSingleProperty(item.$id)} />}
+          keyExtractor={(item) => item.$id.toString()}
           numColumns={2}
           contentContainerClassName="pb-32"
           columnWrapperClassName="flex gap-5 px-5"
@@ -103,9 +112,11 @@ const params = useLocalSearchParams<{query? : string; filter?: string}>()
                 </View>
 
                 <FlatList
-                  data={[1, 2, 3, 4, 5,]}
-                  renderItem={(item)=> <FeaturedCard/>}
-                  keyExtractor={(item)=> item.toString()}
+                  data={latestProperties}
+                  renderItem={({ item }) => (
+                    <FeaturedCard item={item} onPress={()=>handleSingleProperty(item.$id)} />
+                  )}
+                  keyExtractor={(item)=> item.$id.toString()}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   bounces={false}
