@@ -18,6 +18,9 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   isLoading: boolean;
 
+  featuredLoading: boolean;
+  propertiesLoading: boolean;
+
   latestProperties: Property[];
   properties: Property[];
 
@@ -38,6 +41,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [featuredLoading, setFeaturedLoading] = useState(false)
+  const [propertiesLoading, setPropertiesLoading] = useState(false)
 
   const [latestProperties, setLatestProperties] = useState<Property[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -52,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const getLatestProperties = useCallback(async () => {
+    setFeaturedLoading(true)
     try {
       const result = await database.listDocuments(
         appwriteConfig.databaseId!,
@@ -63,12 +69,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return result.documents;
     } catch (error) {
       console.error(error);
-      setLatestProperties([]);
       return [];
+    } finally {
+      setFeaturedLoading(false);
     }
   }, []);
 
   const getProperties = useCallback(
+
     async ({
       filter,
       query,
@@ -78,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       query: string;
       limit: number;
     }) => {
+      setPropertiesLoading(true)
       try {
         const buildQuery = [Query.orderDesc("$createdAt")];
 
@@ -105,10 +114,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setProperties(result.documents);
         return result.documents;
+
       } catch (error) {
         console.error(error);
         setProperties([]);
         return [];
+      } finally {
+        setPropertiesLoading(false)
       }
     },
     []
@@ -147,6 +159,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: user !== null,
       isLoading,
 
+      featuredLoading,
+      propertiesLoading,
+
       latestProperties,
       properties,
 
@@ -156,11 +171,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       getLatestProperties,
       getProperties,
     }),
-    [user, isLoading, latestProperties, properties, refetch, signOut,  getLatestProperties, getProperties,],
+    [user, isLoading, featuredLoading, propertiesLoading, latestProperties, properties, refetch, signOut, getLatestProperties, getProperties,],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
+
 
 export function useAuth() {
   const ctx = useContext(AuthContext);

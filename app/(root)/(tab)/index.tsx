@@ -1,5 +1,6 @@
 import { Card, FeaturedCard } from "@/components/Cards";
 import Filters from "@/components/Filters";
+import NoResult from "@/components/NoResult";
 import Search from "@/components/Search";
 import icons from "@/constants/icons";
 import images from "@/constants/images";
@@ -9,6 +10,7 @@ import { router, useLocalSearchParams } from "expo-router";
 // import seed from "@/lib/seed";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   ImageSourcePropType,
@@ -20,59 +22,64 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Index() {
 
-const { user, latestProperties,  properties,  getLatestProperties,  getProperties, } = useAuth()
+  const { user, latestProperties, properties, getLatestProperties, getProperties, propertiesLoading, featuredLoading } = useAuth()
 
-const [avatarSource, setAvatarSource] = useState<ImageSourcePropType>(images.avatar);
+  const [avatarSource, setAvatarSource] = useState<ImageSourcePropType>(images.avatar);
 
-useEffect(() => {
-  getLatestProperties();
 
-  getProperties({
-    filter: "All",
-    query: "",
-    limit: 10,
-  });
-}, []);
+  const params = useLocalSearchParams<{ query?: string; filter?: string }>()
 
-useEffect(() => {
-  
-  let cancelled = false;
+  useEffect(() => {
+    getLatestProperties();
+  },[]);
 
-  async function resolveAvatar() {
-    const prefsAvatar = (user?.prefs as { avatar?: string } | undefined)?.avatar;
-    if (prefsAvatar) {
-      if (!cancelled) setAvatarSource({ uri: prefsAvatar });
-      return;
-    }
+    useEffect(() => {
+      getProperties({
+        filter: params.filter ?? "All",
+        query: params.query ?? "",
+        limit: 10,
+      });
+    }, [params.filter, params.query]);
 
-    if (user?.email) {
-      try {
-        const gravatarUrl = await getGravatarUrl(user.email, 176);
-        if (!cancelled) setAvatarSource({ uri: gravatarUrl });
+  useEffect(() => {
+
+    let cancelled = false;
+
+    async function resolveAvatar() {
+      const prefsAvatar = (user?.prefs as { avatar?: string } | undefined)?.avatar;
+      if (prefsAvatar) {
+        if (!cancelled) setAvatarSource({ uri: prefsAvatar });
         return;
-      } catch {
-        // Fall back to local placeholder below.
       }
+
+      if (user?.email) {
+        try {
+          const gravatarUrl = await getGravatarUrl(user.email, 176);
+          if (!cancelled) setAvatarSource({ uri: gravatarUrl });
+          return;
+        } catch {
+          // Fall back to local placeholder below.
+        }
+      }
+
+      if (!cancelled) setAvatarSource(images.avatar);
     }
 
-    if (!cancelled) setAvatarSource(images.avatar);
-  }
+    void resolveAvatar();
 
-  void resolveAvatar();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email, user?.prefs]);
 
-  return () => {
-    cancelled = true;
-  };
-}, [user?.email, user?.prefs]);
+  
 
-const params = useLocalSearchParams<{query? : string; filter?: string}>()
-
-const handleSingleProperty = (id: string)=>  router.push(`/properties/${id}`)
+  const handleSingleProperty = (id: string) => router.push(`/properties/${id}`)
 
 
 
 
-// console.log(JSON.stringify(properties))
+  // console.log(JSON.stringify(properties))
 
   return (
     <>
@@ -80,9 +87,16 @@ const handleSingleProperty = (id: string)=>  router.push(`/properties/${id}`)
         {/* <Button title="Seed" onPress={seed} /> */}
         <FlatList
           data={properties}
-          renderItem={({ item }) => <Card item={item} onPress={()=>handleSingleProperty(item.$id)} />}
+          renderItem={({ item }) => <Card item={item} onPress={() => handleSingleProperty(item.$id)} />}
           keyExtractor={(item) => item.$id.toString()}
           numColumns={2}
+          ListEmptyComponent={
+            propertiesLoading ? (
+              <ActivityIndicator size={"large"} className="text-primary-300 mt-5 " />
+            ) : (
+              <NoResult />
+            )
+          }
           contentContainerClassName="pb-32"
           columnWrapperClassName="flex gap-5 px-5"
           showsVerticalScrollIndicator={false}
@@ -111,20 +125,29 @@ const handleSingleProperty = (id: string)=>  router.push(`/properties/${id}`)
                   </TouchableOpacity>
                 </View>
 
-                <FlatList
-                  data={latestProperties}
-                  renderItem={({ item }) => (
-                    <FeaturedCard item={item} onPress={()=>handleSingleProperty(item.$id)} />
-                  )}
-                  keyExtractor={(item)=> item.$id.toString()}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  bounces={false}
-                  contentContainerClassName="flex gap-5 mt-5"
-                />
+                {featuredLoading ?
+                  <ActivityIndicator size={'large'} className="text-primary-300" />
+                  :
+                  !latestProperties || latestProperties.length === 0 ? <NoResult />
+                    : (
+                      <FlatList
+                        data={latestProperties}
+                        renderItem={({ item }) => (
+                          <FeaturedCard item={item} onPress={() => handleSingleProperty(item.$id)} />
+                        )}
+                        keyExtractor={(item) => item.$id.toString()}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        bounces={false}
+                        contentContainerClassName="flex gap-5 mt-5"
+                      />
+                    )
+                }
+
+
               </View>
 
-              
+
 
               <View className="my-5">
                 <View className="flex flex-row items-center justify-between ">
